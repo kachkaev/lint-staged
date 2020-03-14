@@ -237,8 +237,8 @@ describe('runAll', () => {
     await gitCommit({ config: { '*.js': 'prettier --list-different' }, quiet: false })
     expect(console.printHistory()).toMatchInlineSnapshot(`
       "
-      LOG Creating backup... [started]
-      LOG Creating backup... [completed]
+      LOG Preparing... [started]
+      LOG Preparing... [completed]
       LOG Hiding unstaged changes to partially staged files... [started]
       LOG Hiding unstaged changes to partially staged files... [completed]
       LOG Running tasks... [started]
@@ -251,8 +251,8 @@ describe('runAll', () => {
       LOG Applying modifications... [completed]
       LOG Restoring unstaged changes to partially staged files... [started]
       LOG Restoring unstaged changes to partially staged files... [completed]
-      LOG Cleaning up backup... [started]
-      LOG Cleaning up backup... [completed]"
+      LOG Cleaning up... [started]
+      LOG Cleaning up... [completed]"
     `)
 
     // Nothing is wrong, so a new commit is created and file is pretty
@@ -315,8 +315,8 @@ describe('runAll', () => {
     ).rejects.toThrowError()
     expect(console.printHistory()).toMatchInlineSnapshot(`
       "
-      LOG Creating backup... [started]
-      LOG Creating backup... [completed]
+      LOG Preparing... [started]
+      LOG Preparing... [completed]
       LOG Hiding unstaged changes to partially staged files... [started]
       LOG Hiding unstaged changes to partially staged files... [completed]
       LOG Running tasks... [started]
@@ -335,8 +335,8 @@ describe('runAll', () => {
       LOG → Skipped because of errors from tasks.
       LOG Reverting to original state because of errors... [started]
       LOG Reverting to original state because of errors... [completed]
-      LOG Cleaning up backup... [started]
-      LOG Cleaning up backup... [completed]"
+      LOG Cleaning up... [started]
+      LOG Cleaning up... [completed]"
     `)
 
     // Something was wrong so the repo is returned to original state
@@ -744,8 +744,8 @@ describe('runAll', () => {
 
     expect(console.printHistory()).toMatchInlineSnapshot(`
       "
-      LOG Creating backup... [started]
-      LOG Creating backup... [completed]
+      LOG Preparing... [started]
+      LOG Preparing... [completed]
       LOG Running tasks... [started]
       LOG Running tasks for *.js [started]
       LOG [Function] git ... [started]
@@ -754,8 +754,8 @@ describe('runAll', () => {
       LOG Running tasks... [completed]
       LOG Applying modifications... [started]
       LOG Applying modifications... [completed]
-      LOG Cleaning up backup... [started]
-      LOG Cleaning up backup... [failed]
+      LOG Cleaning up... [started]
+      LOG Cleaning up... [failed]
       LOG → lint-staged automatic backup is missing!"
     `)
   })
@@ -879,6 +879,76 @@ describe('runAll', () => {
     expect(await execGit(['rev-list', '--count', 'HEAD'], { cwd: workTreeDir })).toEqual('2')
     expect(await execGit(['log', '-1', '--pretty=%B'], { cwd: workTreeDir })).toMatch('test')
     expect(await readFile('test.js', workTreeDir)).toEqual(testJsFilePretty)
+  })
+
+  it('should skip backup and revert with --no-backup', async () => {
+    // Stage pretty file
+    await appendFile('test.js', testJsFileUgly)
+    await execGit(['add', 'test.js'])
+
+    // Run lint-staged with --no-backup
+    await gitCommit({
+      ...fixJsConfig,
+      quiet: false,
+      noBackup: true
+    })
+
+    expect(console.printHistory()).toMatchInlineSnapshot(`
+      "
+      LOG Preparing... [started]
+      LOG Preparing... [completed]
+      LOG Running tasks... [started]
+      LOG Running tasks for *.js [started]
+      LOG prettier --write [started]
+      LOG prettier --write [completed]
+      LOG Running tasks for *.js [completed]
+      LOG Running tasks... [completed]
+      LOG Applying modifications... [started]
+      LOG Applying modifications... [completed]"
+    `)
+
+    // Nothing is wrong, so a new commit is created
+    expect(await execGit(['rev-list', '--count', 'HEAD'])).toEqual('2')
+    expect(await execGit(['log', '-1', '--pretty=%B'])).toMatch('test')
+    expect(await readFile('test.js')).toEqual(testJsFilePretty)
+  })
+
+  it('should abort commit without reverting with --no-backup', async () => {
+    await appendFile('test.js', testJsFileUgly)
+    await execGit(['add', 'test.js'])
+    await appendFile('test2.js', testJsFileUnfixable)
+    await execGit(['add', 'test2.js'])
+
+    // Run lint-staged with --no-backup
+    await expect(
+      gitCommit({
+        ...fixJsConfig,
+        quiet: false,
+        noBackup: true
+      })
+    ).rejects.toThrowErrorMatchingInlineSnapshot(`"Something went wrong"`)
+
+    expect(console.printHistory()).toMatchInlineSnapshot(`
+      "
+      LOG Preparing... [started]
+      LOG Preparing... [completed]
+      LOG Running tasks... [started]
+      LOG Running tasks for *.js [started]
+      LOG prettier --write [started]
+      LOG prettier --write [failed]
+      LOG → 
+      LOG Running tasks for *.js [failed]
+      LOG → 
+      LOG Running tasks... [failed]
+      LOG Applying modifications... [started]
+      LOG Applying modifications... [completed]"
+    `)
+
+    // Something was wrong, so the commit was aborted
+    expect(await execGit(['rev-list', '--count', 'HEAD'])).toEqual('1')
+    expect(await execGit(['log', '-1', '--pretty=%B'])).toMatch('initial commit')
+    expect(await readFile('test.js')).toEqual(testJsFilePretty) // file was still fixed
+    expect(await readFile('test2.js')).toEqual(testJsFileUnfixable)
   })
 })
 
