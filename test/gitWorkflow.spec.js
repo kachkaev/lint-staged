@@ -81,4 +81,23 @@ describe('gitWorkflow', () => {
       })
     })
   })
+
+  describe('hideUnstagedChanges', () => {
+    it('should handle errors', async () => {
+      const gitWorkflow = new GitWorkflow({
+        gitDir: cwd,
+        gitConfigDir: path.resolve(cwd, './.git')
+      })
+      const totallyRandom = `totally_random_file-${Date.now().toString()}`
+      gitWorkflow.partiallyStagedFiles = [totallyRandom]
+      const ctx = {}
+      await expect(gitWorkflow.hideUnstagedChanges(ctx)).rejects.toThrowErrorMatchingInlineSnapshot(
+        `"error: pathspec '${totallyRandom}' did not match any file(s) known to git"`
+      )
+      expect(ctx).toEqual({
+        gitError: true,
+        gitHideUnstagedChangesError: true
+      })
+    })
+  })
 })
