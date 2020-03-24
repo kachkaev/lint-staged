@@ -895,6 +895,9 @@ describe('runAll', () => {
 
     expect(console.printHistory()).toMatchInlineSnapshot(`
       "
+      WARN 
+        ‼ Skipping backup because \`--no-backup\` was used.
+
       LOG Preparing... [started]
       LOG Preparing... [completed]
       LOG Running tasks... [started]
@@ -913,7 +916,69 @@ describe('runAll', () => {
     expect(await readFile('test.js')).toEqual(testJsFilePretty)
   })
 
-  it('should abort commit without reverting with --no-backup', async () => {
+  it('should abort commit without reverting with --no-backup 1', async () => {
+    // Stage file
+    await appendFile('test.js', testJsFileUgly)
+    await execGit(['add', 'test.js'])
+
+    // Run lint-staged with action that does horrible things to the file, causing a merge conflict
+    const testFile = path.resolve(cwd, 'test.js')
+    await expect(
+      gitCommit({
+        config: {
+          '*.js': () => {
+            fs.writeFileSync(testFile, Buffer.from(testJsFileUnfixable, 'binary'))
+            return `prettier --write ${testFile}`
+          }
+        },
+        noBackup: true,
+        quiet: false
+      })
+    ).rejects.toThrowError()
+
+    expect(console.printHistory()).toMatchInlineSnapshot(`
+      "
+      WARN 
+        ‼ Skipping backup because \`--no-backup\` was used.
+
+      LOG Preparing... [started]
+      LOG Preparing... [completed]
+      LOG Hiding unstaged changes to partially staged files... [started]
+      LOG Hiding unstaged changes to partially staged files... [completed]
+      LOG Running tasks... [started]
+      LOG Running tasks for *.js [started]
+      LOG [Function] prettier ... [started]
+      LOG [Function] prettier ... [completed]
+      LOG Running tasks for *.js [completed]
+      LOG Running tasks... [completed]
+      LOG Applying modifications... [started]
+      LOG Applying modifications... [completed]
+      LOG Restoring unstaged changes to partially staged files... [started]
+      LOG Restoring unstaged changes to partially staged files... [failed]
+      LOG → Unstaged changes could not be restored due to a merge conflict!
+      ERROR 
+        × lint-staged failed due to a git error."
+    `)
+
+    // Something was wrong so the commit was aborted
+    expect(await execGit(['rev-list', '--count', 'HEAD'])).toEqual('1')
+    expect(await execGit(['log', '-1', '--pretty=%B'])).toMatch('initial commit')
+    expect(await execGit(['status', '--porcelain'])).toMatchInlineSnapshot(`"UU test.js"`)
+    // Without revert, the merge conflict is left in-place
+    expect(await readFile('test.js')).toMatchInlineSnapshot(`
+      "<<<<<<< ours
+      module.exports = {
+        foo: \\"bar\\"
+      };
+      =======
+      const obj = {
+          'foo': 'bar'
+      >>>>>>> theirs
+      "
+    `)
+  })
+
+  it('should abort commit without reverting with --no-backup 2', async () => {
     await appendFile('test.js', testJsFileUgly)
     await execGit(['add', 'test.js'])
     await appendFile('test2.js', testJsFileUnfixable)
@@ -930,6 +995,9 @@ describe('runAll', () => {
 
     expect(console.printHistory()).toMatchInlineSnapshot(`
       "
+      WARN 
+        ‼ Skipping backup because \`--no-backup\` was used.
+
       LOG Preparing... [started]
       LOG Preparing... [completed]
       LOG Running tasks... [started]

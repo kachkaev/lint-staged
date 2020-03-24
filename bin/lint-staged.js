@@ -72,7 +72,7 @@ const options = {
   configPath: cmdline.config,
   debug: !!cmdline.debug,
   maxArgLength: getMaxArgLength() / 2,
-  noBackup: !!cmdline.noBackup,
+  noBackup: !cmdline.backup, // commander inverts `no-<x>` flags to `!x`
   quiet: !!cmdline.quiet,
   relative: !!cmdline.relative,
   shell: !!cmdline.shell
