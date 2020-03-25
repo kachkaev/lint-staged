@@ -881,22 +881,22 @@ describe('runAll', () => {
     expect(await readFile('test.js', workTreeDir)).toEqual(testJsFilePretty)
   })
 
-  it('should skip backup and revert with --no-backup', async () => {
+  it('should skip backup and revert with --no-stash', async () => {
     // Stage pretty file
     await appendFile('test.js', testJsFileUgly)
     await execGit(['add', 'test.js'])
 
-    // Run lint-staged with --no-backup
+    // Run lint-staged with --no-stash
     await gitCommit({
       ...fixJsConfig,
-      quiet: false,
-      noBackup: true
+      stash: false,
+      quiet: false
     })
 
     expect(console.printHistory()).toMatchInlineSnapshot(`
       "
       WARN 
-        ‼ Skipping backup because \`--no-backup\` was used.
+        ‼ Skipping backup because \`--no-stash\` was used.
 
       LOG Preparing... [started]
       LOG Preparing... [completed]
@@ -916,7 +916,7 @@ describe('runAll', () => {
     expect(await readFile('test.js')).toEqual(testJsFilePretty)
   })
 
-  it('should abort commit without reverting with --no-backup 1', async () => {
+  it('should abort commit without reverting with --no-stash 1', async () => {
     // Stage file
     await appendFile('test.js', testJsFileUgly)
     await execGit(['add', 'test.js'])
@@ -931,15 +931,15 @@ describe('runAll', () => {
             return `prettier --write ${testFile}`
           }
         },
-        noBackup: true,
-        quiet: false
+        quiet: false,
+        stash: false
       })
     ).rejects.toThrowError()
 
     expect(console.printHistory()).toMatchInlineSnapshot(`
       "
       WARN 
-        ‼ Skipping backup because \`--no-backup\` was used.
+        ‼ Skipping backup because \`--no-stash\` was used.
 
       LOG Preparing... [started]
       LOG Preparing... [completed]
@@ -978,25 +978,25 @@ describe('runAll', () => {
     `)
   })
 
-  it('should abort commit without reverting with --no-backup 2', async () => {
+  it('should abort commit without reverting with --no-stash 2', async () => {
     await appendFile('test.js', testJsFileUgly)
     await execGit(['add', 'test.js'])
     await appendFile('test2.js', testJsFileUnfixable)
     await execGit(['add', 'test2.js'])
 
-    // Run lint-staged with --no-backup
+    // Run lint-staged with --no-stash
     await expect(
       gitCommit({
         ...fixJsConfig,
         quiet: false,
-        noBackup: true
+        stash: false
       })
     ).rejects.toThrowErrorMatchingInlineSnapshot(`"Something went wrong"`)
 
     expect(console.printHistory()).toMatchInlineSnapshot(`
       "
       WARN 
-        ‼ Skipping backup because \`--no-backup\` was used.
+        ‼ Skipping backup because \`--no-stash\` was used.
 
       LOG Preparing... [started]
       LOG Preparing... [completed]
