@@ -895,9 +895,7 @@ describe('runAll', () => {
 
     expect(console.printHistory()).toMatchInlineSnapshot(`
       "
-      WARN 
-        ‼ Skipping backup because \`--no-stash\` was used.
-
+      WARN ‼ Skipping backup because \`--no-stash\` was used.
       LOG Preparing... [started]
       LOG Preparing... [completed]
       LOG Running tasks... [started]
@@ -938,9 +936,7 @@ describe('runAll', () => {
 
     expect(console.printHistory()).toMatchInlineSnapshot(`
       "
-      WARN 
-        ‼ Skipping backup because \`--no-stash\` was used.
-
+      WARN ‼ Skipping backup because \`--no-stash\` was used.
       LOG Preparing... [started]
       LOG Preparing... [completed]
       LOG Hiding unstaged changes to partially staged files... [started]
@@ -995,9 +991,7 @@ describe('runAll', () => {
 
     expect(console.printHistory()).toMatchInlineSnapshot(`
       "
-      WARN 
-        ‼ Skipping backup because \`--no-stash\` was used.
-
+      WARN ‼ Skipping backup because \`--no-stash\` was used.
       LOG Preparing... [started]
       LOG Preparing... [completed]
       LOG Running tasks... [started]
